@@ -7,7 +7,6 @@ use crate::evolution::{Crossover, MutationConfig, PointMutator};
 use crate::execution::{ExactMatchFitness, Executor, FitnessFunction};
 use crate::primitives::PrimitiveRegistry;
 use crate::storage::{EvolutionHistory, GenerationRecord};
-use crate::template::{TemplateCreationStrategy, TemplateRegistry};
 
 use rand::Rng;
 
@@ -17,17 +16,14 @@ pub struct EvolutionRunner {
     pub mutation_rate: f64,
     pub crossover_rate: f64,
     pub primitive_registry: PrimitiveRegistry,
-    pub template_registry: TemplateRegistry,
     executor: Executor,
     mutator: PointMutator,
     crossover: Crossover,
-    template_strategy: TemplateCreationStrategy,
 }
 
 impl EvolutionRunner {
     pub fn new() -> Self {
         let primitive_registry = PrimitiveRegistry::with_standard_primitives();
-        let template_registry = TemplateRegistry::new();
         let executor = Executor::with_defaults();
 
         let mut mutation_config = MutationConfig::default();
@@ -35,18 +31,15 @@ impl EvolutionRunner {
 
         let mutator = PointMutator::new(mutation_config);
         let crossover = Crossover::single_point();
-        let template_strategy = TemplateCreationStrategy::TopPercentile(0.1);
 
         Self {
             population_size: 100,
             mutation_rate: 0.3,
             crossover_rate: 0.6,
             primitive_registry,
-            template_registry,
             executor,
             mutator,
             crossover,
-            template_strategy,
         }
     }
 
@@ -106,6 +99,9 @@ impl EvolutionRunner {
 
             // Average fitness across test cases
             dna.set_fitness(total_fitness / test_cases.len() as f64);
+
+            // Detect and register templates in this DNA's local library
+            dna.detect_and_register_templates();
         }
     }
 
@@ -162,7 +158,7 @@ impl EvolutionRunner {
 
             // Mutation
             if rng.r#gen::<f64>() < self.mutation_rate {
-                child = self.mutator.mutate(&child, &self.template_registry);
+                child = self.mutator.mutate(&child);
             }
 
             child.generation = generation;
@@ -172,36 +168,6 @@ impl EvolutionRunner {
         next_generation
     }
 
-    /// Check if templates should be created
-    fn create_templates(&mut self, population: &[DNA]) -> Vec<u64> {
-        let fitness_values: Vec<f64> = population
-            .iter()
-            .filter_map(|dna| dna.fitness)
-            .collect();
-
-        let mut new_template_ids = Vec::new();
-
-        for dna in population {
-            if let Some(fitness) = dna.fitness {
-                if self
-                    .template_strategy
-                    .should_create_template(fitness, dna.generation, &fitness_values)
-                {
-                    // Create template from this DNA
-                    if !dna.is_empty() {
-                        let template_id = self.template_registry.register(
-                            dna.genes.clone(),
-                            fitness,
-                            dna.generation,
-                        );
-                        new_template_ids.push(template_id);
-                    }
-                }
-            }
-        }
-
-        new_template_ids
-    }
 
     /// Run evolution for N generations
     pub fn run(
@@ -221,21 +187,18 @@ impl EvolutionRunner {
                 println!("Generation {}", generation_num);
             }
 
-            // Evaluate fitness
+            // Evaluate fitness (also detects and registers templates in each DNA's local library)
             self.evaluate_population(&mut population, test_cases, fitness_fn);
 
-            // Create templates
-            let templates_created = self.create_templates(&population);
-
             // Record statistics
-            let record = GenerationRecord::new(generation_num, population.clone(), templates_created);
+            // Note: Templates are now tracked locally in each DNA's template_library
+            let record = GenerationRecord::new(generation_num, population.clone(), Vec::new());
 
             if verbose {
                 println!(
-                    "  Best fitness: {:.4}, Avg fitness: {:.4}, Templates: {}",
+                    "  Best fitness: {:.4}, Avg fitness: {:.4}",
                     record.best_fitness,
                     record.average_fitness,
-                    self.template_registry.count()
                 );
             }
 
@@ -257,8 +220,8 @@ impl Default for EvolutionRunner {
     }
 }
 
-/// Format DNA for display
-pub fn format_dna(dna: &DNA, primitives: &PrimitiveRegistry, templates: &TemplateRegistry) -> String {
+/// Format DNA for display (uses DNA's local template_library)
+pub fn format_dna(dna: &DNA, primitives: &PrimitiveRegistry) -> String {
     let mut output = String::new();
 
     if let Some(id) = dna.id {
@@ -266,7 +229,8 @@ pub fn format_dna(dna: &DNA, primitives: &PrimitiveRegistry, templates: &Templat
     }
     output.push_str(&format!("Generation: {}\n", dna.generation));
     output.push_str(&format!("Fitness: {:.4}\n", dna.fitness.unwrap_or(0.0)));
-    output.push_str(&format!("Length: {} genes\n\n", dna.len()));
+    output.push_str(&format!("Length: {} genes\n", dna.len()));
+    output.push_str(&format!("Templates in library: {}\n\n", dna.template_library.count()));
 
     output.push_str("Genes:\n");
     for (i, gene) in dna.genes.iter().enumerate() {
@@ -276,8 +240,8 @@ pub fn format_dna(dna: &DNA, primitives: &PrimitiveRegistry, templates: &Templat
                     .map(|p| p.name().to_string())
                     .unwrap_or_else(|| format!("PRIM_{}", id))
             }
-            OperationId::Template(id) => {
-                format!("TEMPLATE_{}", id)
+            OperationId::Template(hash) => {
+                format!("TEMPLATE_{:x}", hash)
             }
         };
 

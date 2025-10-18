@@ -10,10 +10,9 @@ pub use mutation::{PointMutator, MutationConfig};
 pub use crossover::{Crossover, CrossoverMode};
 
 use crate::dna::DNA;
-use crate::template::TemplateRegistry;
 
 /// Trait for evolution operators
 pub trait EvolutionOperator {
-    /// Apply this operator to DNA, potentially using template registry
-    fn apply(&self, dna: &DNA, template_registry: &TemplateRegistry) -> DNA;
+    /// Apply this operator to DNA (uses DNA's local template_library)
+    fn apply(&self, dna: &DNA) -> DNA;
 }

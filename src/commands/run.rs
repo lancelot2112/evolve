@@ -45,7 +45,6 @@ pub fn cmd_evolve(problem: String, generations: u32, population_size: usize, out
         // Test the best solution
         let executor = Executor::with_defaults();
         let primitive_registry = PrimitiveRegistry::with_standard_primitives();
-        let template_registry = runner.template_registry;
 
         println!("\nTest Results:");
         for (input, expected) in &test_cases {

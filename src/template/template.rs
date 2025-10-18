@@ -178,9 +178,15 @@ mod tests {
     #[test]
     fn test_template_sorting() {
         let mut registry = TemplateRegistry::new();
-        registry.register(vec![], 0.5, 0);
-        registry.register(vec![], 0.9, 1);
-        registry.register(vec![], 0.7, 2);
+
+        // Create templates with different gene sequences to ensure different hashes
+        let genes1 = vec![Gene::new(OperationId::Primitive(0), vec![Argument::Register(0)])];
+        let genes2 = vec![Gene::new(OperationId::Primitive(1), vec![Argument::Register(1)])];
+        let genes3 = vec![Gene::new(OperationId::Primitive(2), vec![Argument::Register(2)])];
+
+        registry.register(genes1, 0.5, 0);
+        registry.register(genes2, 0.9, 1);
+        registry.register(genes3, 0.7, 2);
 
         let by_fitness = registry.by_fitness();
         assert_eq!(by_fitness[0].fitness_when_saved, 0.9);

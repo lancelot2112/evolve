@@ -24,7 +24,6 @@ pub fn cmd_show_dna(id: u64, file: String) {
     };
 
     let primitives = PrimitiveRegistry::with_standard_primitives();
-    let templates = crate::template::TemplateRegistry::new();
 
-    println!("{}", format_dna(dna, &primitives, &templates));
+    println!("{}", format_dna(dna, &primitives));
 }

@@ -121,7 +121,6 @@ impl PointMutator {
         &self,
         rng: &mut R,
         dna: &DNA,
-        template_registry: &TemplateRegistry,
     ) -> DNA {
         let mut new_dna = dna.clone();
         let insert_pos = if new_dna.is_empty() {
@@ -130,7 +129,7 @@ impl PointMutator {
             rng.gen_range(0..=new_dna.len())
         };
 
-        let new_gene = self.random_gene(rng, template_registry);
+        let new_gene = self.random_gene(rng, &dna.template_library);
         new_dna.insert_gene(insert_pos, new_gene);
 
         new_dna
@@ -154,7 +153,6 @@ impl PointMutator {
         &self,
         rng: &mut R,
         dna: &DNA,
-        template_registry: &TemplateRegistry,
     ) -> DNA {
         if dna.is_empty() {
             return dna.clone();
@@ -164,7 +162,7 @@ impl PointMutator {
         let sub_pos = rng.gen_range(0..new_dna.len());
         new_dna.remove_gene(sub_pos);
 
-        let new_gene = self.random_gene(rng, template_registry);
+        let new_gene = self.random_gene(rng, &dna.template_library);
         new_dna.insert_gene(sub_pos, new_gene);
 
         new_dna
@@ -191,7 +189,6 @@ impl PointMutator {
         &self,
         rng: &mut R,
         dna: &DNA,
-        template_registry: &TemplateRegistry,
     ) -> DNA {
         if dna.is_empty() {
             return dna.clone();
@@ -215,8 +212,8 @@ impl PointMutator {
         let pos = template_positions[rng.gen_range(0..template_positions.len())];
         let gene = &dna.genes[pos];
 
-        if let OperationId::Template(template_idx) = gene.operation {
-            if let Some(template) = template_registry.get(template_idx) {
+        if let OperationId::Template(template_hash) = gene.operation {
+            if let Some(template) = dna.template_library.get(template_hash) {
                 let mut new_dna = dna.clone();
                 new_dna.remove_gene(pos);
 
@@ -232,15 +229,15 @@ impl PointMutator {
         dna.clone()
     }
 
-    /// Apply all mutations based on configured rates
-    pub fn mutate(&self, dna: &DNA, template_registry: &TemplateRegistry) -> DNA {
+    /// Apply all mutations based on configured rates (uses DNA's local template_library)
+    pub fn mutate(&self, dna: &DNA) -> DNA {
         let mut rng = rand::thread_rng();
         let mut result = dna.clone();
         result.fitness = None; // Reset fitness - must be re-evaluated
 
         // Apply each mutation type based on probability
         if rng.r#gen::<f64>() < self.config.insertion_rate {
-            result = self.apply_insertion(&mut rng, &result, template_registry);
+            result = self.apply_insertion(&mut rng, &result);
         }
 
         if rng.r#gen::<f64>() < self.config.deletion_rate {
@@ -248,7 +245,7 @@ impl PointMutator {
         }
 
         if rng.r#gen::<f64>() < self.config.substitution_rate {
-            result = self.apply_substitution(&mut rng, &result, template_registry);
+            result = self.apply_substitution(&mut rng, &result);
         }
 
         if rng.r#gen::<f64>() < self.config.argument_rate {
@@ -256,7 +253,7 @@ impl PointMutator {
         }
 
         if rng.r#gen::<f64>() < self.config.expansion_rate {
-            result = self.apply_expansion(&mut rng, &result, template_registry);
+            result = self.apply_expansion(&mut rng, &result);
         }
 
         result
@@ -264,8 +261,8 @@ impl PointMutator {
 }
 
 impl EvolutionOperator for PointMutator {
-    fn apply(&self, dna: &DNA, template_registry: &TemplateRegistry) -> DNA {
-        self.mutate(dna, template_registry)
+    fn apply(&self, dna: &DNA) -> DNA {
+        self.mutate(dna)
     }
 }
 
@@ -276,10 +273,9 @@ mod tests {
     #[test]
     fn test_insertion_mutation() {
         let mutator = PointMutator::with_defaults();
-        let template_registry = TemplateRegistry::new();
 
         let dna = DNA::empty(0);
-        let mutated = mutator.apply_insertion(&mut rand::thread_rng(), &dna, &template_registry);
+        let mutated = mutator.apply_insertion(&mut rand::thread_rng(), &dna);
 
         assert_eq!(mutated.len(), 1);
     }
@@ -311,12 +307,11 @@ mod tests {
     #[test]
     fn test_full_mutation() {
         let mutator = PointMutator::with_defaults();
-        let template_registry = TemplateRegistry::new();
 
         let mut dna = DNA::empty(0);
         dna.push_gene(Gene::primitive(0, vec![Argument::Register(0)]));
 
-        let mutated = mutator.mutate(&dna, &template_registry);
+        let mutated = mutator.mutate(&dna);
         assert!(mutated.fitness.is_none()); // Fitness should be reset
     }
 }

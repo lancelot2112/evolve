@@ -265,7 +265,7 @@ impl Crossover {
 }
 
 impl EvolutionOperator for Crossover {
-    fn apply(&self, dna: &DNA, _template_registry: &TemplateRegistry) -> DNA {
+    fn apply(&self, dna: &DNA) -> DNA {
         // Note: Crossover needs a second parent, so this implementation
         // just returns a clone. Use cross() or cross_many() directly instead.
         dna.clone()

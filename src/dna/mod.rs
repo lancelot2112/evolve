@@ -121,6 +121,37 @@ impl DNA {
     pub fn remove_gene(&mut self, index: usize) -> Gene {
         self.genes.remove(index)
     }
+
+    /// Detect and register templates found in this DNA's genes
+    /// Returns the number of new templates registered
+    pub fn detect_and_register_templates(&mut self) -> usize {
+        use crate::template::detect_templates;
+
+        if self.fitness.is_none() {
+            // Don't create templates from unevaluated DNA
+            return 0;
+        }
+
+        let detected = detect_templates(&self.genes);
+        let mut count = 0;
+
+        for (start_idx, end_idx, _hash) in detected {
+            // Extract genes between markers (excluding the markers themselves)
+            let template_genes = self.genes[start_idx + 1..end_idx].to_vec();
+
+            if !template_genes.is_empty() {
+                // Register in this DNA's template library
+                self.template_library.register(
+                    template_genes,
+                    self.fitness.unwrap_or(0.0),
+                    self.generation,
+                );
+                count += 1;
+            }
+        }
+
+        count
+    }
 }
 
 #[cfg(test)]
