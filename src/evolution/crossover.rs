@@ -72,6 +72,14 @@ impl Crossover {
 
         let mut child = DNA::new(genes, parent1.generation);
         child.fitness = None; // Reset fitness
+
+        // Mitochondrial inheritance: randomly inherit template library from one parent
+        child.template_library = if rng.r#gen::<bool>() {
+            parent1.template_library.clone()
+        } else {
+            parent2.template_library.clone()
+        };
+
         child
     }
 
@@ -118,6 +126,14 @@ impl Crossover {
 
         let mut child = DNA::new(genes, parent1.generation);
         child.fitness = None;
+
+        // Mitochondrial inheritance: randomly inherit template library from one parent
+        child.template_library = if rng.r#gen::<bool>() {
+            parent1.template_library.clone()
+        } else {
+            parent2.template_library.clone()
+        };
+
         child
     }
 
@@ -155,6 +171,11 @@ impl Crossover {
         let generation = parents[0].generation;
         let mut child = DNA::new(genes, generation);
         child.fitness = None;
+
+        // Mitochondrial inheritance: randomly inherit template library from one parent
+        let chosen_parent = parents[rng.gen_range(0..parents.len())];
+        child.template_library = chosen_parent.template_library.clone();
+
         child
     }
 
@@ -201,6 +222,14 @@ impl Crossover {
 
         let mut child = DNA::new(genes, parent1.generation);
         child.fitness = None;
+
+        // Mitochondrial inheritance: randomly inherit template library from one parent
+        child.template_library = if rng.r#gen::<bool>() {
+            parent1.template_library.clone()
+        } else {
+            parent2.template_library.clone()
+        };
+
         child
     }
 
