@@ -32,3 +32,6 @@ criterion/
 # Environment files
 .env
 .env.local
+
+# Evolution output
+evolution_history.json

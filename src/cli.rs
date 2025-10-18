@@ -1,0 +1,295 @@
+/// CLI module for command-line interface
+///
+/// Provides commands for evolving, inspecting, and analyzing DNA
+
+use crate::dna::{Argument, DNA, Gene, OperationId};
+use crate::evolution::{Crossover, MutationConfig, PointMutator};
+use crate::execution::{ExactMatchFitness, Executor, FitnessFunction};
+use crate::primitives::PrimitiveRegistry;
+use crate::storage::{EvolutionHistory, GenerationRecord};
+use crate::template::{TemplateCreationStrategy, TemplateRegistry};
+
+use rand::Rng;
+
+/// Simple evolutionary algorithm runner
+pub struct EvolutionRunner {
+    pub population_size: usize,
+    pub mutation_rate: f64,
+    pub crossover_rate: f64,
+    pub primitive_registry: PrimitiveRegistry,
+    pub template_registry: TemplateRegistry,
+    executor: Executor,
+    mutator: PointMutator,
+    crossover: Crossover,
+    template_strategy: TemplateCreationStrategy,
+}
+
+impl EvolutionRunner {
+    pub fn new() -> Self {
+        let primitive_registry = PrimitiveRegistry::with_standard_primitives();
+        let template_registry = TemplateRegistry::new();
+        let executor = Executor::with_defaults();
+
+        let mut mutation_config = MutationConfig::default();
+        mutation_config.max_primitive_id = (primitive_registry.count() - 1) as u16;
+
+        let mutator = PointMutator::new(mutation_config);
+        let crossover = Crossover::single_point();
+        let template_strategy = TemplateCreationStrategy::TopPercentile(0.1);
+
+        Self {
+            population_size: 100,
+            mutation_rate: 0.3,
+            crossover_rate: 0.6,
+            primitive_registry,
+            template_registry,
+            executor,
+            mutator,
+            crossover,
+            template_strategy,
+        }
+    }
+
+    /// Initialize random population
+    fn initialize_population(&self, generation: u32) -> Vec<DNA> {
+        let mut rng = rand::thread_rng();
+        let mut population = Vec::new();
+
+        for _ in 0..self.population_size {
+            let mut dna = DNA::empty(generation);
+
+            // Random initial length
+            let length = rng.gen_range(1..=10);
+
+            for _ in 0..length {
+                let prim_id = rng.gen_range(0..self.primitive_registry.count()) as u16;
+                let arg_count = rng.gen_range(0..=3);
+
+                let args: Vec<Argument> = (0..arg_count)
+                    .map(|_| {
+                        if rng.r#gen::<bool>() {
+                            Argument::Register(rng.gen_range(0..8))
+                        } else {
+                            Argument::Literal(rng.gen_range(-10..=10))
+                        }
+                    })
+                    .collect();
+
+                dna.push_gene(Gene::primitive(prim_id, args));
+            }
+
+            population.push(dna);
+        }
+
+        population
+    }
+
+    /// Evaluate fitness for entire population
+    fn evaluate_population(
+        &self,
+        population: &mut [DNA],
+        test_cases: &[(Vec<i64>, Vec<i64>)],
+        fitness_fn: &dyn FitnessFunction,
+    ) {
+        for dna in population.iter_mut() {
+            let mut total_fitness = 0.0;
+
+            for (input, expected_output) in test_cases {
+                let result = self.executor.execute(
+                    dna,
+                    input.clone(),
+                    &self.primitive_registry,
+                );
+
+                total_fitness += fitness_fn.evaluate(&result, expected_output);
+            }
+
+            // Average fitness across test cases
+            dna.set_fitness(total_fitness / test_cases.len() as f64);
+        }
+    }
+
+    /// Tournament selection
+    fn select_parent<'a>(&self, population: &'a [DNA]) -> &'a DNA {
+        let mut rng = rand::thread_rng();
+        let tournament_size = 3;
+
+        let contestants: Vec<&DNA> = (0..tournament_size)
+            .map(|_| &population[rng.gen_range(0..population.len())])
+            .collect();
+
+        contestants
+            .into_iter()
+            .max_by(|a, b| {
+                a.fitness
+                    .unwrap_or(0.0)
+                    .partial_cmp(&b.fitness.unwrap_or(0.0))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .unwrap()
+    }
+
+    /// Create next generation
+    fn create_next_generation(&self, population: &[DNA], generation: u32) -> Vec<DNA> {
+        let mut rng = rand::thread_rng();
+        let mut next_generation = Vec::new();
+
+        // Elitism: Keep best individual
+        if let Some(best) = population
+            .iter()
+            .max_by(|a, b| {
+                a.fitness
+                    .unwrap_or(0.0)
+                    .partial_cmp(&b.fitness.unwrap_or(0.0))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+        {
+            next_generation.push(best.clone());
+        }
+
+        // Generate rest of population
+        while next_generation.len() < self.population_size {
+            let parent1 = self.select_parent(population);
+
+            let mut child = if rng.r#gen::<f64>() < self.crossover_rate {
+                // Crossover
+                let parent2 = self.select_parent(population);
+                self.crossover.cross(parent1, parent2)
+            } else {
+                // Clone parent
+                parent1.clone()
+            };
+
+            // Mutation
+            if rng.r#gen::<f64>() < self.mutation_rate {
+                child = self.mutator.mutate(&child, &self.template_registry);
+            }
+
+            child.generation = generation;
+            next_generation.push(child);
+        }
+
+        next_generation
+    }
+
+    /// Check if templates should be created
+    fn create_templates(&mut self, population: &[DNA]) -> Vec<u64> {
+        let fitness_values: Vec<f64> = population
+            .iter()
+            .filter_map(|dna| dna.fitness)
+            .collect();
+
+        let mut new_template_ids = Vec::new();
+
+        for dna in population {
+            if let Some(fitness) = dna.fitness {
+                if self
+                    .template_strategy
+                    .should_create_template(fitness, dna.generation, &fitness_values)
+                {
+                    // Create template from this DNA
+                    if !dna.is_empty() {
+                        let template_id = self.template_registry.register(
+                            dna.genes.clone(),
+                            fitness,
+                            dna.generation,
+                        );
+                        new_template_ids.push(template_id);
+                    }
+                }
+            }
+        }
+
+        new_template_ids
+    }
+
+    /// Run evolution for N generations
+    pub fn run(
+        &mut self,
+        generations: u32,
+        test_cases: &[(Vec<i64>, Vec<i64>)],
+        fitness_fn: &dyn FitnessFunction,
+        verbose: bool,
+    ) -> EvolutionHistory {
+        let mut history = EvolutionHistory::new();
+
+        // Initialize population
+        let mut population = self.initialize_population(0);
+
+        for generation_num in 0..generations {
+            if verbose {
+                println!("Generation {}", generation_num);
+            }
+
+            // Evaluate fitness
+            self.evaluate_population(&mut population, test_cases, fitness_fn);
+
+            // Create templates
+            let templates_created = self.create_templates(&population);
+
+            // Record statistics
+            let record = GenerationRecord::new(generation_num, population.clone(), templates_created);
+
+            if verbose {
+                println!(
+                    "  Best fitness: {:.4}, Avg fitness: {:.4}, Templates: {}",
+                    record.best_fitness,
+                    record.average_fitness,
+                    self.template_registry.count()
+                );
+            }
+
+            history.add_generation(record);
+
+            // Create next generation
+            if generation_num < generations - 1 {
+                population = self.create_next_generation(&population, generation_num + 1);
+            }
+        }
+
+        history
+    }
+}
+
+impl Default for EvolutionRunner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Format DNA for display
+pub fn format_dna(dna: &DNA, primitives: &PrimitiveRegistry, templates: &TemplateRegistry) -> String {
+    let mut output = String::new();
+
+    if let Some(id) = dna.id {
+        output.push_str(&format!("DNA ID: {}\n", id));
+    }
+    output.push_str(&format!("Generation: {}\n", dna.generation));
+    output.push_str(&format!("Fitness: {:.4}\n", dna.fitness.unwrap_or(0.0)));
+    output.push_str(&format!("Length: {} genes\n\n", dna.len()));
+
+    output.push_str("Genes:\n");
+    for (i, gene) in dna.genes.iter().enumerate() {
+        let op_name = match gene.operation {
+            OperationId::Primitive(id) => {
+                primitives.get(id)
+                    .map(|p| p.name().to_string())
+                    .unwrap_or_else(|| format!("PRIM_{}", id))
+            }
+            OperationId::Template(id) => {
+                format!("TEMPLATE_{}", id)
+            }
+        };
+
+        let args_str: Vec<String> = gene.args.iter().map(|arg| {
+            match arg {
+                Argument::Register(r) => format!("R{}", r),
+                Argument::Literal(l) => l.to_string(),
+            }
+        }).collect();
+
+        output.push_str(&format!("  {}: {} {}\n", i, op_name, args_str.join(" ")));
+    }
+
+    output
+}
