@@ -80,7 +80,12 @@ pub fn cmd_evolve(
 
         println!("\nTest Results:");
         for (input, expected) in &test_cases {
-            let result = executor.execute(best_dna, input.clone(), &primitive_registry, &template_registry);
+            let result = executor.execute(
+                best_dna,
+                input.clone(),
+                &primitive_registry,
+                &template_registry,
+            );
             println!(
                 "  Input: {:?} -> Output: {:?} (Expected: {:?}) {}",
                 input,

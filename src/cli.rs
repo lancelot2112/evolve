@@ -8,6 +8,7 @@ use crate::lineage::{Lineage, LineageRegistry};
 use crate::primitives::PrimitiveRegistry;
 use crate::storage::{EvolutionHistory, GenerationRecord};
 
+use indicatif::{ProgressBar, ProgressStyle};
 use rand::Rng;
 
 /// Simple evolutionary algorithm runner
@@ -140,7 +141,9 @@ impl EvolutionRunner {
             if let Some(lineage) = self.lineage_registry.get_mut(dna.lineage_id) {
                 for (start, end, _hash) in detected_templates {
                     let template_genes = dna.genes[start..=end].to_vec();
-                    lineage.template_library.register(template_genes, avg_fitness, dna.generation);
+                    lineage
+                        .template_library
+                        .register(template_genes, avg_fitness, dna.generation);
                 }
 
                 // Update lineage best fitness
@@ -251,6 +254,20 @@ impl EvolutionRunner {
         let mut history = EvolutionHistory::new();
         let use_incremental_save = self.save_interval > 0 && output_file.is_some();
 
+        // Create progress bar (only if not verbose)
+        let progress_bar = if !verbose {
+            let pb = ProgressBar::new(generations as u64);
+            pb.set_style(
+                ProgressStyle::default_bar()
+                    .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} gen | {msg}")
+                    .expect("Invalid progress bar template")
+                    .progress_chars("#>-"),
+            );
+            Some(pb)
+        } else {
+            None
+        };
+
         // Initialize population
         let mut population = self.initialize_population(0);
 
@@ -263,8 +280,10 @@ impl EvolutionRunner {
             self.evaluate_population(&mut population, test_cases, fitness_fn);
 
             // Update lineage alive/extinct status based on current population
-            let current_lineage_ids: Vec<u64> = population.iter().map(|dna| dna.lineage_id).collect();
-            self.lineage_registry.update_alive_status(&current_lineage_ids);
+            let current_lineage_ids: Vec<u64> =
+                population.iter().map(|dna| dna.lineage_id).collect();
+            self.lineage_registry
+                .update_alive_status(&current_lineage_ids);
 
             // Record statistics
             // TODO: Update GenerationRecord to include lineage information
@@ -278,6 +297,16 @@ impl EvolutionRunner {
                     self.lineage_registry.alive_count(),
                     self.lineage_registry.count(),
                 );
+            } else if let Some(ref pb) = progress_bar {
+                // Update progress bar with current stats
+                pb.set_message(format!(
+                    "Best: {:.4} | Avg: {:.4} | Lineages: {}/{}",
+                    record.best_fitness,
+                    record.average_fitness,
+                    self.lineage_registry.alive_count(),
+                    self.lineage_registry.count(),
+                ));
+                pb.inc(1);
             }
 
             // Incremental save logic
@@ -313,6 +342,14 @@ impl EvolutionRunner {
             if generation_num < generations - 1 {
                 population = self.create_next_generation(&population, generation_num + 1);
             }
+        }
+
+        // Finish progress bar
+        if let Some(pb) = progress_bar {
+            pb.finish_with_message(format!(
+                "Complete! Best: {:.4}",
+                history.best_dna().and_then(|d| d.fitness).unwrap_or(0.0)
+            ));
         }
 
         history
