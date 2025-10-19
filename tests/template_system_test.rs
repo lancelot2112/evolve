@@ -51,7 +51,14 @@ fn test_template_inheritance_through_crossover() {
     parent1.set_fitness(0.9);
 
     parent1.push_gene(Gene::primitive(10, vec![])); // TEMPLATE_START
-    parent1.push_gene(Gene::primitive(0, vec![Argument::Literal(2), Argument::Literal(3), Argument::Register(0)])); // ADD
+    parent1.push_gene(Gene::primitive(
+        0,
+        vec![
+            Argument::Literal(2),
+            Argument::Literal(3),
+            Argument::Register(0),
+        ],
+    )); // ADD
     parent1.push_gene(Gene::primitive(11, vec![])); // TEMPLATE_END
 
     parent1.detect_and_register_templates();
@@ -62,7 +69,14 @@ fn test_template_inheritance_through_crossover() {
     parent2.set_fitness(0.8);
 
     parent2.push_gene(Gene::primitive(10, vec![])); // TEMPLATE_START
-    parent2.push_gene(Gene::primitive(1, vec![Argument::Register(1), Argument::Register(2), Argument::Register(3)])); // SUB
+    parent2.push_gene(Gene::primitive(
+        1,
+        vec![
+            Argument::Register(1),
+            Argument::Register(2),
+            Argument::Register(3),
+        ],
+    )); // SUB
     parent2.push_gene(Gene::primitive(11, vec![])); // TEMPLATE_END
 
     parent2.detect_and_register_templates();
@@ -84,7 +98,14 @@ fn test_mutation_uses_local_templates() {
     dna.set_fitness(0.9);
 
     dna.push_gene(Gene::primitive(10, vec![])); // TEMPLATE_START
-    dna.push_gene(Gene::primitive(0, vec![Argument::Register(0), Argument::Register(0), Argument::Register(0)])); // ADD
+    dna.push_gene(Gene::primitive(
+        0,
+        vec![
+            Argument::Register(0),
+            Argument::Register(0),
+            Argument::Register(0),
+        ],
+    )); // ADD
     dna.push_gene(Gene::primitive(11, vec![])); // TEMPLATE_END
 
     dna.detect_and_register_templates();
@@ -135,7 +156,14 @@ fn test_multiple_templates_in_same_dna() {
 
     // First template: ADD
     dna.push_gene(Gene::primitive(10, vec![])); // TEMPLATE_START
-    dna.push_gene(Gene::primitive(0, vec![Argument::Register(0), Argument::Register(0), Argument::Register(0)])); // ADD
+    dna.push_gene(Gene::primitive(
+        0,
+        vec![
+            Argument::Register(0),
+            Argument::Register(0),
+            Argument::Register(0),
+        ],
+    )); // ADD
     dna.push_gene(Gene::primitive(11, vec![])); // TEMPLATE_END
 
     // Some non-template genes
@@ -143,7 +171,14 @@ fn test_multiple_templates_in_same_dna() {
 
     // Second template: SUB
     dna.push_gene(Gene::primitive(10, vec![])); // TEMPLATE_START
-    dna.push_gene(Gene::primitive(1, vec![Argument::Register(1), Argument::Register(2), Argument::Register(3)])); // SUB
+    dna.push_gene(Gene::primitive(
+        1,
+        vec![
+            Argument::Register(1),
+            Argument::Register(2),
+            Argument::Register(3),
+        ],
+    )); // SUB
     dna.push_gene(Gene::primitive(11, vec![])); // TEMPLATE_END
 
     // Detect and register templates

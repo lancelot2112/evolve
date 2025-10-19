@@ -3,7 +3,6 @@
 /// This module defines the fundamental structure of genetic code in the evolution system.
 /// DNA is composed of Genes, which reference either user-defined Primitives or
 /// algorithm-evolved Templates.
-
 use serde::{Deserialize, Serialize};
 
 /// Identifies either a primitive operation or a template
@@ -54,42 +53,51 @@ impl Gene {
 pub struct DNA {
     /// Unique incremental ID (assigned when saved to history)
     pub id: Option<u64>,
+    /// Lineage this DNA belongs to
+    pub lineage_id: u64,
+    /// Parent(s) that created this DNA
+    pub parents: Vec<super::lineage::ParentInfo>,
     /// The sequence of genes
     pub genes: Vec<Gene>,
     /// Fitness score (None if not yet evaluated)
     pub fitness: Option<f64>,
     /// Generation this DNA was created in
     pub generation: u32,
-    /// Lineage-local template library (inherited from parent)
-    #[serde(skip)]  // Don't serialize - will be reconstructed
-    pub template_library: crate::template::TemplateRegistry,
 }
 
 impl DNA {
-    pub fn new(genes: Vec<Gene>, generation: u32) -> Self {
+    /// Create new DNA with lineage
+    pub fn new(genes: Vec<Gene>, generation: u32, lineage_id: u64) -> Self {
         Self {
             id: None,
+            lineage_id,
+            parents: Vec::new(),
             genes,
             fitness: None,
             generation,
-            template_library: crate::template::TemplateRegistry::new(),
         }
     }
 
-    /// Create DNA with a specific template library
-    pub fn with_template_library(genes: Vec<Gene>, generation: u32, template_library: crate::template::TemplateRegistry) -> Self {
+    /// Create DNA with parents
+    pub fn with_parents(
+        genes: Vec<Gene>,
+        generation: u32,
+        lineage_id: u64,
+        parents: Vec<super::lineage::ParentInfo>,
+    ) -> Self {
         Self {
             id: None,
+            lineage_id,
+            parents,
             genes,
             fitness: None,
             generation,
-            template_library,
         }
     }
 
-    /// Create empty DNA
-    pub fn empty(generation: u32) -> Self {
-        Self::new(Vec::new(), generation)
+    /// Create empty DNA (used for generation 0 progenitors)
+    pub fn empty(generation: u32, lineage_id: u64) -> Self {
+        Self::new(Vec::new(), generation, lineage_id)
     }
 
     /// Set the fitness score
@@ -122,35 +130,19 @@ impl DNA {
         self.genes.remove(index)
     }
 
-    /// Detect and register templates found in this DNA's genes
-    /// Returns the number of new templates registered
-    pub fn detect_and_register_templates(&mut self) -> usize {
-        use crate::template::detect_templates;
+    /// Get the mitochondrial parent (if any)
+    pub fn mitochondrial_parent(&self) -> Option<&super::lineage::ParentInfo> {
+        self.parents.iter().find(|p| p.is_mitochondrial())
+    }
 
-        if self.fitness.is_none() {
-            // Don't create templates from unevaluated DNA
-            return 0;
-        }
+    /// Get all genetic parents (non-mitochondrial)
+    pub fn genetic_parents(&self) -> Vec<&super::lineage::ParentInfo> {
+        self.parents.iter().filter(|p| p.is_genetic()).collect()
+    }
 
-        let detected = detect_templates(&self.genes);
-        let mut count = 0;
-
-        for (start_idx, end_idx, _hash) in detected {
-            // Extract genes between markers (excluding the markers themselves)
-            let template_genes = self.genes[start_idx + 1..end_idx].to_vec();
-
-            if !template_genes.is_empty() {
-                // Register in this DNA's template library
-                self.template_library.register(
-                    template_genes,
-                    self.fitness.unwrap_or(0.0),
-                    self.generation,
-                );
-                count += 1;
-            }
-        }
-
-        count
+    /// Check if this DNA has any parents
+    pub fn has_parents(&self) -> bool {
+        !self.parents.is_empty()
     }
 }
 
@@ -167,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_dna_operations() {
-        let mut dna = DNA::empty(0);
+        let mut dna = DNA::empty(0, 0); // generation 0, lineage 0
         assert!(dna.is_empty());
 
         dna.push_gene(Gene::primitive(0, vec![Argument::Register(0)]));
@@ -175,5 +167,21 @@ mod tests {
 
         dna.set_fitness(0.95);
         assert_eq!(dna.fitness, Some(0.95));
+    }
+
+    #[test]
+    fn test_dna_parents() {
+        use super::super::lineage::ParentInfo;
+
+        let parent1 = ParentInfo::mitochondrial(10, 0);
+        let parent2 = ParentInfo::genetic(20, 1);
+
+        let dna = DNA::with_parents(vec![], 1, 0, vec![parent1, parent2]);
+
+        assert!(dna.has_parents());
+        assert!(dna.mitochondrial_parent().is_some());
+        assert_eq!(dna.mitochondrial_parent().unwrap().dna_id, 10);
+        assert_eq!(dna.genetic_parents().len(), 1);
+        assert_eq!(dna.genetic_parents()[0].dna_id, 20);
     }
 }

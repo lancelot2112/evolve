@@ -5,6 +5,7 @@
 use crate::execution::Executor;
 use crate::primitives::PrimitiveRegistry;
 use crate::storage::EvolutionHistory;
+use crate::template::TemplateRegistry;
 
 pub fn cmd_replay(id: u64, file: String, input: Option<String>) {
     let history = match EvolutionHistory::load_from_file_auto(&file) {
@@ -33,12 +34,26 @@ pub fn cmd_replay(id: u64, file: String, input: Option<String>) {
         vec![5]
     };
 
-    println!("Replaying DNA ID {} with input: {:?}", id, input_values);
+    println!("Replaying DNA ID {}", id);
+    println!("  Lineage: {}", dna.lineage_id);
+    println!("  Generation: {}", dna.generation);
+    println!("  Input: {:?}", input_values);
 
     let executor = Executor::with_defaults();
     let primitives = PrimitiveRegistry::with_standard_primitives();
 
-    let result = executor.execute(dna, input_values, &primitives);
+    // TODO: Templates now live in lineages, not DNA
+    // For proper replay, we need to:
+    // 1. Load the LineageRegistry from storage
+    // 2. Get the template library for dna.lineage_id
+    // 3. Pass it to executor.execute()
+    //
+    // For now, use an empty template registry (DNA with no templates will still work)
+    let template_registry = TemplateRegistry::new();
+    eprintln!("WARNING: Using empty template registry - DNA with templates will fail");
+    eprintln!("TODO: Load lineage template registry from storage");
+
+    let result = executor.execute(dna, input_values, &primitives, &template_registry);
 
     println!("\nExecution Result:");
     println!("  Success: {}", result.success);

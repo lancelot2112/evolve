@@ -6,13 +6,13 @@
 //! capturing outcomes, and various FitnessFunction implementations for evaluating
 //! how well DNA performs on test cases.
 
-mod executor;
 mod config;
-mod result;
+mod executor;
 mod fitness;
+mod result;
 
 // Re-export core types
-pub use executor::Executor;
 pub use config::ExecutionConfig;
+pub use executor::Executor;
+pub use fitness::{ExactMatchFitness, FitnessFunction, MSEFitness, PartialMatchFitness};
 pub use result::ExecutionResult;
-pub use fitness::{FitnessFunction, ExactMatchFitness, MSEFitness, PartialMatchFitness};

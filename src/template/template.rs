@@ -7,8 +7,8 @@
 //! provides automatic deduplication and enables lineage-local template
 //! libraries for mitochondrial-style inheritance.
 
-use crate::dna::Gene;
 use super::hashing::hash_genes;
+use crate::dna::Gene;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -128,7 +128,9 @@ impl TemplateRegistry {
     /// Merge another template library into this one (for inheritance)
     pub fn merge(&mut self, other: &TemplateRegistry) {
         for (hash, template) in &other.templates {
-            self.templates.entry(*hash).or_insert_with(|| template.clone());
+            self.templates
+                .entry(*hash)
+                .or_insert_with(|| template.clone());
         }
     }
 }
@@ -180,9 +182,18 @@ mod tests {
         let mut registry = TemplateRegistry::new();
 
         // Create templates with different gene sequences to ensure different hashes
-        let genes1 = vec![Gene::new(OperationId::Primitive(0), vec![Argument::Register(0)])];
-        let genes2 = vec![Gene::new(OperationId::Primitive(1), vec![Argument::Register(1)])];
-        let genes3 = vec![Gene::new(OperationId::Primitive(2), vec![Argument::Register(2)])];
+        let genes1 = vec![Gene::new(
+            OperationId::Primitive(0),
+            vec![Argument::Register(0)],
+        )];
+        let genes2 = vec![Gene::new(
+            OperationId::Primitive(1),
+            vec![Argument::Register(1)],
+        )];
+        let genes3 = vec![Gene::new(
+            OperationId::Primitive(2),
+            vec![Argument::Register(2)],
+        )];
 
         registry.register(genes1, 0.5, 0);
         registry.register(genes2, 0.9, 1);

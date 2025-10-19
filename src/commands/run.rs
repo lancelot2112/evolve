@@ -44,13 +44,25 @@ pub fn cmd_evolve(
     runner.keep_in_memory = keep_in_memory;
 
     if save_interval > 0 {
-        println!("Incremental save enabled: saving every {} generations", save_interval);
+        println!(
+            "Incremental save enabled: saving every {} generations",
+            save_interval
+        );
         if keep_in_memory > 0 {
-            println!("Memory management: keeping last {} generations in RAM\n", keep_in_memory);
+            println!(
+                "Memory management: keeping last {} generations in RAM\n",
+                keep_in_memory
+            );
         }
     }
 
-    let history = runner.run(generations, &test_cases, &fitness_fn, verbose, Some(&output));
+    let history = runner.run(
+        generations,
+        &test_cases,
+        &fitness_fn,
+        verbose,
+        Some(&output),
+    );
 
     // Print best solution
     if let Some(best_dna) = history.best_dna() {
@@ -63,20 +75,22 @@ pub fn cmd_evolve(
         // Test the best solution
         let executor = Executor::with_defaults();
         let primitive_registry = PrimitiveRegistry::with_standard_primitives();
+        // TODO: Use the lineage's template library instead of empty registry
+        let template_registry = crate::template::TemplateRegistry::new();
 
         println!("\nTest Results:");
         for (input, expected) in &test_cases {
-            let result = executor.execute(
-                best_dna,
-                input.clone(),
-                &primitive_registry,
-            );
+            let result = executor.execute(best_dna, input.clone(), &primitive_registry, &template_registry);
             println!(
                 "  Input: {:?} -> Output: {:?} (Expected: {:?}) {}",
                 input,
                 result.output,
                 expected,
-                if result.output == *expected { "✓" } else { "✗" }
+                if result.output == *expected {
+                    "✓"
+                } else {
+                    "✗"
+                }
             );
         }
     }
@@ -89,10 +103,20 @@ pub fn cmd_evolve(
             eprintln!("\nFailed to save history: {}", e);
         } else {
             println!("\nEvolution history saved to {}", json_output);
-            println!("Total DNA created: {}", history.records.iter().map(|r| r.population.len()).sum::<usize>());
+            println!(
+                "Total DNA created: {}",
+                history
+                    .records
+                    .iter()
+                    .map(|r| r.population.len())
+                    .sum::<usize>()
+            );
         }
     } else {
-        println!("\nEvolution complete! History saved incrementally to {}", output);
+        println!(
+            "\nEvolution complete! History saved incrementally to {}",
+            output
+        );
         println!("Generations in memory: {}", history.records.len());
         if keep_in_memory > 0 {
             println!("(Older generations were cleared from memory but are saved to disk)");

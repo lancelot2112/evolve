@@ -1,10 +1,9 @@
 /// Crossover operators for splicing two or more DNA vectors
 ///
 /// Crossover operations combine genetic material from multiple parents to create offspring.
-
-use crate::dna::{DNA, Gene, OperationId};
+use crate::dna::{DNA, OperationId};
 use crate::evolution::EvolutionOperator;
-use crate::template::TemplateRegistry;
+use crate::lineage::ParentInfo;
 use rand::Rng;
 
 /// Different modes of crossover
@@ -49,7 +48,7 @@ impl Crossover {
     /// Perform single-point crossover on two parents
     fn single_point_crossover(&self, parent1: &DNA, parent2: &DNA) -> DNA {
         if parent1.is_empty() && parent2.is_empty() {
-            return DNA::empty(parent1.generation);
+            return DNA::empty(parent1.generation, parent1.lineage_id);
         }
 
         if parent1.is_empty() {
@@ -62,6 +61,13 @@ impl Crossover {
 
         let mut rng = rand::thread_rng();
 
+        // Randomly choose which parent is mitochondrial (donates template library)
+        let (mito_parent, gene_parent) = if rng.r#gen::<bool>() {
+            (parent1, parent2)
+        } else {
+            (parent2, parent1)
+        };
+
         // Choose a crossover point
         let point = rng.gen_range(0..=parent1.len().min(parent2.len()));
 
@@ -70,17 +76,26 @@ impl Crossover {
         genes.extend_from_slice(&parent1.genes[..point]);
         genes.extend_from_slice(&parent2.genes[point.min(parent2.len())..]);
 
-        let mut child = DNA::new(genes, parent1.generation);
-        child.fitness = None; // Reset fitness
+        // Create child in mitochondrial parent's lineage with parent tracking
+        let parent_info = vec![
+            ParentInfo::mitochondrial(
+                mito_parent
+                    .id
+                    .expect("Mitochondrial parent must have an ID"),
+                mito_parent.lineage_id,
+            ),
+            ParentInfo::genetic(
+                gene_parent.id.expect("Genetic parent must have an ID"),
+                gene_parent.lineage_id,
+            ),
+        ];
 
-        // Mitochondrial inheritance: randomly inherit template library from one parent
-        child.template_library = if rng.r#gen::<bool>() {
-            parent1.template_library.clone()
-        } else {
-            parent2.template_library.clone()
-        };
-
-        child
+        DNA::with_parents(
+            genes,
+            parent1.generation,
+            mito_parent.lineage_id,
+            parent_info,
+        )
     }
 
     /// Perform two-point crossover on two parents
@@ -94,6 +109,13 @@ impl Crossover {
         }
 
         let mut rng = rand::thread_rng();
+
+        // Randomly choose which parent is mitochondrial (donates template library)
+        let (mito_parent, gene_parent) = if rng.r#gen::<bool>() {
+            (parent1, parent2)
+        } else {
+            (parent2, parent1)
+        };
 
         // Choose two crossover points
         let max_len = parent1.len().max(parent2.len());
@@ -124,23 +146,32 @@ impl Crossover {
             genes.extend_from_slice(&parent1.genes[p2_clamped..]);
         }
 
-        let mut child = DNA::new(genes, parent1.generation);
-        child.fitness = None;
+        // Create child in mitochondrial parent's lineage with parent tracking
+        let parent_info = vec![
+            ParentInfo::mitochondrial(
+                mito_parent
+                    .id
+                    .expect("Mitochondrial parent must have an ID"),
+                mito_parent.lineage_id,
+            ),
+            ParentInfo::genetic(
+                gene_parent.id.expect("Genetic parent must have an ID"),
+                gene_parent.lineage_id,
+            ),
+        ];
 
-        // Mitochondrial inheritance: randomly inherit template library from one parent
-        child.template_library = if rng.r#gen::<bool>() {
-            parent1.template_library.clone()
-        } else {
-            parent2.template_library.clone()
-        };
-
-        child
+        DNA::with_parents(
+            genes,
+            parent1.generation,
+            mito_parent.lineage_id,
+            parent_info,
+        )
     }
 
     /// Perform uniform crossover on multiple parents
     fn uniform_crossover(&self, parents: &[&DNA]) -> DNA {
         if parents.is_empty() {
-            return DNA::empty(0);
+            return DNA::empty(0, 0);
         }
 
         if parents.len() == 1 {
@@ -149,6 +180,10 @@ impl Crossover {
 
         let mut rng = rand::thread_rng();
 
+        // Randomly choose which parent is mitochondrial (donates template library)
+        let mito_parent_idx = rng.gen_range(0..parents.len());
+        let mito_parent = parents[mito_parent_idx];
+
         // Find the maximum length
         let max_len = parents.iter().map(|p| p.len()).max().unwrap_or(0);
 
@@ -156,11 +191,8 @@ impl Crossover {
 
         for i in 0..max_len {
             // Randomly select a parent that has a gene at this position
-            let available_parents: Vec<&DNA> = parents
-                .iter()
-                .filter(|p| i < p.len())
-                .copied()
-                .collect();
+            let available_parents: Vec<&DNA> =
+                parents.iter().filter(|p| i < p.len()).copied().collect();
 
             if !available_parents.is_empty() {
                 let chosen = available_parents[rng.gen_range(0..available_parents.len())];
@@ -169,14 +201,25 @@ impl Crossover {
         }
 
         let generation = parents[0].generation;
-        let mut child = DNA::new(genes, generation);
-        child.fitness = None;
 
-        // Mitochondrial inheritance: randomly inherit template library from one parent
-        let chosen_parent = parents[rng.gen_range(0..parents.len())];
-        child.template_library = chosen_parent.template_library.clone();
+        // Build parent info: one mitochondrial, rest genetic
+        let mut parent_info = vec![ParentInfo::mitochondrial(
+            mito_parent
+                .id
+                .expect("Mitochondrial parent must have an ID"),
+            mito_parent.lineage_id,
+        )];
 
-        child
+        for (idx, parent) in parents.iter().enumerate() {
+            if idx != mito_parent_idx {
+                parent_info.push(ParentInfo::genetic(
+                    parent.id.expect("Genetic parent must have an ID"),
+                    parent.lineage_id,
+                ));
+            }
+        }
+
+        DNA::with_parents(genes, generation, mito_parent.lineage_id, parent_info)
     }
 
     /// Find positions that are good crossover points (at template boundaries)
@@ -208,6 +251,13 @@ impl Crossover {
 
         let mut rng = rand::thread_rng();
 
+        // Randomly choose which parent is mitochondrial (donates template library)
+        let (mito_parent, gene_parent) = if rng.r#gen::<bool>() {
+            (parent1, parent2)
+        } else {
+            (parent2, parent1)
+        };
+
         let boundaries1 = self.find_template_boundaries(parent1);
         let boundaries2 = self.find_template_boundaries(parent2);
 
@@ -220,17 +270,26 @@ impl Crossover {
         genes.extend_from_slice(&parent1.genes[..point1]);
         genes.extend_from_slice(&parent2.genes[point2..]);
 
-        let mut child = DNA::new(genes, parent1.generation);
-        child.fitness = None;
+        // Create child in mitochondrial parent's lineage with parent tracking
+        let parent_info = vec![
+            ParentInfo::mitochondrial(
+                mito_parent
+                    .id
+                    .expect("Mitochondrial parent must have an ID"),
+                mito_parent.lineage_id,
+            ),
+            ParentInfo::genetic(
+                gene_parent.id.expect("Genetic parent must have an ID"),
+                gene_parent.lineage_id,
+            ),
+        ];
 
-        // Mitochondrial inheritance: randomly inherit template library from one parent
-        child.template_library = if rng.r#gen::<bool>() {
-            parent1.template_library.clone()
-        } else {
-            parent2.template_library.clone()
-        };
-
-        child
+        DNA::with_parents(
+            genes,
+            parent1.generation,
+            mito_parent.lineage_id,
+            parent_info,
+        )
     }
 
     /// Perform crossover on two parents
@@ -257,7 +316,7 @@ impl Crossover {
                 } else if parents.len() == 1 {
                     parents[0].clone()
                 } else {
-                    DNA::empty(0)
+                    DNA::empty(0, 0)
                 }
             }
         }
@@ -275,16 +334,18 @@ impl EvolutionOperator for Crossover {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dna::Argument;
+    use crate::dna::{Argument, Gene};
 
     #[test]
     fn test_single_point_crossover() {
-        let mut parent1 = DNA::empty(0);
+        let mut parent1 = DNA::empty(0, 0); // generation 0, lineage 0
+        parent1.id = Some(1); // Assign ID for crossover
         parent1.push_gene(Gene::primitive(0, vec![Argument::Register(0)]));
         parent1.push_gene(Gene::primitive(1, vec![Argument::Register(1)]));
         parent1.push_gene(Gene::primitive(2, vec![Argument::Register(2)]));
 
-        let mut parent2 = DNA::empty(0);
+        let mut parent2 = DNA::empty(0, 1); // generation 0, lineage 1
+        parent2.id = Some(2); // Assign ID for crossover
         parent2.push_gene(Gene::primitive(3, vec![Argument::Register(3)]));
         parent2.push_gene(Gene::primitive(4, vec![Argument::Register(4)]));
 
@@ -294,16 +355,34 @@ mod tests {
         // Child should have genes from both parents
         assert!(!child.is_empty());
         assert!(child.fitness.is_none());
+        // Child should have parent tracking
+        assert!(child.has_parents());
+        assert_eq!(child.parents.len(), 2);
+        // One parent should be mitochondrial, one genetic
+        assert_eq!(
+            child
+                .parents
+                .iter()
+                .filter(|p| p.is_mitochondrial())
+                .count(),
+            1
+        );
+        assert_eq!(child.parents.iter().filter(|p| p.is_genetic()).count(), 1);
+        // Child should be in mitochondrial parent's lineage
+        let mito_parent = child.mitochondrial_parent().unwrap();
+        assert_eq!(child.lineage_id, mito_parent.lineage_id);
     }
 
     #[test]
     fn test_two_point_crossover() {
-        let mut parent1 = DNA::empty(0);
+        let mut parent1 = DNA::empty(0, 0);
+        parent1.id = Some(10);
         parent1.push_gene(Gene::primitive(0, vec![]));
         parent1.push_gene(Gene::primitive(1, vec![]));
         parent1.push_gene(Gene::primitive(2, vec![]));
 
-        let mut parent2 = DNA::empty(0);
+        let mut parent2 = DNA::empty(0, 1);
+        parent2.id = Some(20);
         parent2.push_gene(Gene::primitive(3, vec![]));
         parent2.push_gene(Gene::primitive(4, vec![]));
         parent2.push_gene(Gene::primitive(5, vec![]));
@@ -312,19 +391,24 @@ mod tests {
         let child = crossover.cross(&parent1, &parent2);
 
         assert!(!child.is_empty());
+        assert!(child.has_parents());
+        assert_eq!(child.parents.len(), 2);
     }
 
     #[test]
     fn test_uniform_crossover() {
-        let mut parent1 = DNA::empty(0);
+        let mut parent1 = DNA::empty(0, 0);
+        parent1.id = Some(100);
         parent1.push_gene(Gene::primitive(0, vec![]));
         parent1.push_gene(Gene::primitive(1, vec![]));
 
-        let mut parent2 = DNA::empty(0);
+        let mut parent2 = DNA::empty(0, 1);
+        parent2.id = Some(200);
         parent2.push_gene(Gene::primitive(2, vec![]));
         parent2.push_gene(Gene::primitive(3, vec![]));
 
-        let mut parent3 = DNA::empty(0);
+        let mut parent3 = DNA::empty(0, 2);
+        parent3.id = Some(300);
         parent3.push_gene(Gene::primitive(4, vec![]));
         parent3.push_gene(Gene::primitive(5, vec![]));
 
@@ -332,11 +416,22 @@ mod tests {
         let child = crossover.cross_many(&[&parent1, &parent2, &parent3]);
 
         assert_eq!(child.len(), 2);
+        assert!(child.has_parents());
+        assert_eq!(child.parents.len(), 3); // One mitochondrial, two genetic
+        assert_eq!(
+            child
+                .parents
+                .iter()
+                .filter(|p| p.is_mitochondrial())
+                .count(),
+            1
+        );
+        assert_eq!(child.parents.iter().filter(|p| p.is_genetic()).count(), 2);
     }
 
     #[test]
     fn test_template_aware_boundaries() {
-        let mut dna = DNA::empty(0);
+        let mut dna = DNA::empty(0, 0);
         dna.push_gene(Gene::primitive(0, vec![]));
         dna.push_gene(Gene::template(0, vec![]));
         dna.push_gene(Gene::primitive(1, vec![]));

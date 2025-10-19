@@ -13,9 +13,18 @@ use std::fmt;
 /// Errors that can occur during primitive execution
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionError {
-    InvalidArgumentCount { expected: usize, got: usize },
-    InvalidArgumentType { expected: &'static str, got: &'static str },
-    RegisterOutOfBounds { register: u8, max: u8 },
+    InvalidArgumentCount {
+        expected: usize,
+        got: usize,
+    },
+    InvalidArgumentType {
+        expected: &'static str,
+        got: &'static str,
+    },
+    RegisterOutOfBounds {
+        register: u8,
+        max: u8,
+    },
     StackUnderflow,
     StackOverflow,
     DivisionByZero,
@@ -27,10 +36,18 @@ impl fmt::Display for ExecutionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::InvalidArgumentCount { expected, got } => {
-                write!(f, "Invalid argument count: expected {}, got {}", expected, got)
+                write!(
+                    f,
+                    "Invalid argument count: expected {}, got {}",
+                    expected, got
+                )
             }
             Self::InvalidArgumentType { expected, got } => {
-                write!(f, "Invalid argument type: expected {}, got {}", expected, got)
+                write!(
+                    f,
+                    "Invalid argument type: expected {}, got {}",
+                    expected, got
+                )
             }
             Self::RegisterOutOfBounds { register, max } => {
                 write!(f, "Register R{} out of bounds (max: R{})", register, max)

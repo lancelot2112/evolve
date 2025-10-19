@@ -18,11 +18,11 @@ pub fn hash_genes(genes: &[Gene]) -> u64 {
         // Hash the operation
         match gene.operation {
             OperationId::Primitive(id) => {
-                0u8.hash(&mut hasher);  // Tag for primitive
+                0u8.hash(&mut hasher); // Tag for primitive
                 id.hash(&mut hasher);
             }
             OperationId::Template(hash) => {
-                1u8.hash(&mut hasher);  // Tag for template
+                1u8.hash(&mut hasher); // Tag for template
                 hash.hash(&mut hasher);
             }
         }

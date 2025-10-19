@@ -6,12 +6,12 @@
 //! to the primitive ID used in DNA. The with_standard_primitives() constructor
 //! registers the default set of primitives in the correct order.
 
-use super::trait_def::Primitive;
-use super::arithmetic::{Add, Sub, Mul, Div};
-use super::stack::{Push, Pop};
-use super::io::{ReadInput, WriteOutput};
+use super::arithmetic::{Add, Div, Mul, Sub};
 use super::data::{Copy, Nop};
-use super::markers::{TemplateStart, TemplateEnd};
+use super::io::{ReadInput, WriteOutput};
+use super::markers::{TemplateEnd, TemplateStart};
+use super::stack::{Pop, Push};
+use super::trait_def::Primitive;
 
 /// Registry of all available primitives
 pub struct PrimitiveRegistry {

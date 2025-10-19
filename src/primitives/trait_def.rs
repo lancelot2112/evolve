@@ -6,13 +6,17 @@
 //! problem domain. Each primitive takes arguments and modifies the execution
 //! context (registers, stack, I/O) according to its specific behavior.
 
-use crate::dna::Argument;
 use super::context::{ExecutionContext, ExecutionError};
+use crate::dna::Argument;
 
 /// Trait for primitive operations
 pub trait Primitive: Send + Sync {
     /// Execute the primitive operation
-    fn execute(&self, args: &[Argument], context: &mut ExecutionContext) -> Result<(), ExecutionError>;
+    fn execute(
+        &self,
+        args: &[Argument],
+        context: &mut ExecutionContext,
+    ) -> Result<(), ExecutionError>;
 
     /// Expected number of arguments
     fn arg_count(&self) -> usize;

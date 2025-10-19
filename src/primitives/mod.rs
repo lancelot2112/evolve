@@ -6,23 +6,23 @@
 //! This module provides the execution context, primitive trait, registry, and
 //! all standard primitive implementations organized by category.
 
-mod context;
-mod trait_def;
-mod registry;
 mod arithmetic;
-mod stack;
-mod io;
+mod context;
 mod data;
+mod io;
 mod markers;
+mod registry;
+mod stack;
+mod trait_def;
 
 // Re-export core types and traits
 pub use context::{ExecutionContext, ExecutionError};
-pub use trait_def::Primitive;
 pub use registry::PrimitiveRegistry;
+pub use trait_def::Primitive;
 
 // Re-export all primitive implementations
-pub use arithmetic::{Add, Sub, Mul, Div};
-pub use stack::{Push, Pop};
-pub use io::{ReadInput, WriteOutput};
+pub use arithmetic::{Add, Div, Mul, Sub};
 pub use data::{Copy, Nop};
-pub use markers::{TemplateStart, TemplateEnd};
+pub use io::{ReadInput, WriteOutput};
+pub use markers::{TemplateEnd, TemplateStart};
+pub use stack::{Pop, Push};

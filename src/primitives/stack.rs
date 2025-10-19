@@ -6,17 +6,24 @@
 //! Stack overflow and underflow are checked and return errors when limits
 //! are exceeded.
 
-use crate::dna::Argument;
 use super::context::{ExecutionContext, ExecutionError};
 use super::trait_def::Primitive;
+use crate::dna::Argument;
 
 /// PUSH: Push args[0] onto stack
 pub struct Push;
 
 impl Primitive for Push {
-    fn execute(&self, args: &[Argument], context: &mut ExecutionContext) -> Result<(), ExecutionError> {
+    fn execute(
+        &self,
+        args: &[Argument],
+        context: &mut ExecutionContext,
+    ) -> Result<(), ExecutionError> {
         if args.len() != 1 {
-            return Err(ExecutionError::InvalidArgumentCount { expected: 1, got: args.len() });
+            return Err(ExecutionError::InvalidArgumentCount {
+                expected: 1,
+                got: args.len(),
+            });
         }
 
         let value = context.read_arg(&args[0])?;
@@ -25,18 +32,31 @@ impl Primitive for Push {
         Ok(())
     }
 
-    fn arg_count(&self) -> usize { 1 }
-    fn name(&self) -> &str { "PUSH" }
-    fn description(&self) -> &str { "Push value onto stack" }
+    fn arg_count(&self) -> usize {
+        1
+    }
+    fn name(&self) -> &str {
+        "PUSH"
+    }
+    fn description(&self) -> &str {
+        "Push value onto stack"
+    }
 }
 
 /// POP: Pop from stack into register args[0]
 pub struct Pop;
 
 impl Primitive for Pop {
-    fn execute(&self, args: &[Argument], context: &mut ExecutionContext) -> Result<(), ExecutionError> {
+    fn execute(
+        &self,
+        args: &[Argument],
+        context: &mut ExecutionContext,
+    ) -> Result<(), ExecutionError> {
         if args.len() != 1 {
-            return Err(ExecutionError::InvalidArgumentCount { expected: 1, got: args.len() });
+            return Err(ExecutionError::InvalidArgumentCount {
+                expected: 1,
+                got: args.len(),
+            });
         }
 
         let value = context.stack_pop()?;
@@ -44,15 +64,24 @@ impl Primitive for Pop {
         if let Argument::Register(reg) = args[0] {
             context.write_register(reg, value)?;
         } else {
-            return Err(ExecutionError::InvalidArgumentType { expected: "Register", got: "Literal" });
+            return Err(ExecutionError::InvalidArgumentType {
+                expected: "Register",
+                got: "Literal",
+            });
         }
 
         Ok(())
     }
 
-    fn arg_count(&self) -> usize { 1 }
-    fn name(&self) -> &str { "POP" }
-    fn description(&self) -> &str { "Pop value from stack into register" }
+    fn arg_count(&self) -> usize {
+        1
+    }
+    fn name(&self) -> &str {
+        "POP"
+    }
+    fn description(&self) -> &str {
+        "Pop value from stack into register"
+    }
 }
 
 #[cfg(test)]

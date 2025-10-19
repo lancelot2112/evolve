@@ -18,10 +18,10 @@ pub struct ExecutionConfig {
 impl Default for ExecutionConfig {
     fn default() -> Self {
         Self {
-            register_count: 8,          // R0-R7
-            max_instructions: 10_000,   // Reasonable limit
-            max_stack_depth: 1_000,     // Deep enough for most uses
-            max_recursion_depth: 100,   // Prevent infinite template recursion
+            register_count: 8,        // R0-R7
+            max_instructions: 10_000, // Reasonable limit
+            max_stack_depth: 1_000,   // Deep enough for most uses
+            max_recursion_depth: 100, // Prevent infinite template recursion
         }
     }
 }

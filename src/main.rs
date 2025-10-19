@@ -1,17 +1,17 @@
+mod cli;
+mod commands;
 /// Evolve - Evolutionary Algorithm System
 ///
 /// This system allows algorithms to evolve from user-defined primitives into
 /// complex behaviors through mutation and crossover, with successful patterns
 /// being saved as indexed templates for efficient reuse.
-
 mod dna;
-mod primitives;
-mod template;
 mod evolution;
 mod execution;
+pub mod lineage; // Make public for cross-module access
+mod primitives;
 mod storage;
-mod cli;
-mod commands;
+mod template;
 
 use clap::{Parser, Subcommand};
 use commands::*;
@@ -122,9 +122,21 @@ fn main() {
             verbose,
             save_interval,
             keep_in_memory,
-        } => cmd_evolve(problem, generations, population, output, verbose, save_interval, keep_in_memory),
+        } => cmd_evolve(
+            problem,
+            generations,
+            population,
+            output,
+            verbose,
+            save_interval,
+            keep_in_memory,
+        ),
 
-        Commands::Inspect { generation, file, top } => cmd_inspect(generation, file, top),
+        Commands::Inspect {
+            generation,
+            file,
+            top,
+        } => cmd_inspect(generation, file, top),
 
         Commands::ShowDna { id, file } => cmd_show_dna(id, file),
 

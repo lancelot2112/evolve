@@ -6,14 +6,14 @@
 //! templates in evolved DNA. Only non-empty sequences between valid markers are detected.
 //! The function returns the start/end indices and hash of each template found.
 
-use crate::dna::{Gene, OperationId};
 use super::hashing::hash_genes;
+use crate::dna::{Gene, OperationId};
 
 /// Detect templates in DNA (sequences between TEMPLATE_START and TEMPLATE_END)
 /// Returns list of (start_index, end_index, hash) for found templates
 pub fn detect_templates(genes: &[Gene]) -> Vec<(usize, usize, u64)> {
-    const TEMPLATE_START_ID: u16 = 10;  // ID of TEMPLATE_START primitive
-    const TEMPLATE_END_ID: u16 = 11;     // ID of TEMPLATE_END primitive
+    const TEMPLATE_START_ID: u16 = 10; // ID of TEMPLATE_START primitive
+    const TEMPLATE_END_ID: u16 = 11; // ID of TEMPLATE_END primitive
 
     let mut templates = Vec::new();
     let mut start_idx = None;

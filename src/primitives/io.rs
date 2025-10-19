@@ -6,17 +6,24 @@
 //! external world. READ_INPUT consumes values from the input stream, and
 //! WRITE_OUTPUT appends values to the output stream.
 
-use crate::dna::Argument;
 use super::context::{ExecutionContext, ExecutionError};
 use super::trait_def::Primitive;
+use crate::dna::Argument;
 
 /// READ_INPUT: Read next input value into register args[0]
 pub struct ReadInput;
 
 impl Primitive for ReadInput {
-    fn execute(&self, args: &[Argument], context: &mut ExecutionContext) -> Result<(), ExecutionError> {
+    fn execute(
+        &self,
+        args: &[Argument],
+        context: &mut ExecutionContext,
+    ) -> Result<(), ExecutionError> {
         if args.len() != 1 {
-            return Err(ExecutionError::InvalidArgumentCount { expected: 1, got: args.len() });
+            return Err(ExecutionError::InvalidArgumentCount {
+                expected: 1,
+                got: args.len(),
+            });
         }
 
         let value = if context.input_cursor < context.input.len() {
@@ -30,24 +37,40 @@ impl Primitive for ReadInput {
         if let Argument::Register(reg) = args[0] {
             context.write_register(reg, value)?;
         } else {
-            return Err(ExecutionError::InvalidArgumentType { expected: "Register", got: "Literal" });
+            return Err(ExecutionError::InvalidArgumentType {
+                expected: "Register",
+                got: "Literal",
+            });
         }
 
         Ok(())
     }
 
-    fn arg_count(&self) -> usize { 1 }
-    fn name(&self) -> &str { "READ_INPUT" }
-    fn description(&self) -> &str { "Read next input value into register" }
+    fn arg_count(&self) -> usize {
+        1
+    }
+    fn name(&self) -> &str {
+        "READ_INPUT"
+    }
+    fn description(&self) -> &str {
+        "Read next input value into register"
+    }
 }
 
 /// WRITE_OUTPUT: Write args[0] to output
 pub struct WriteOutput;
 
 impl Primitive for WriteOutput {
-    fn execute(&self, args: &[Argument], context: &mut ExecutionContext) -> Result<(), ExecutionError> {
+    fn execute(
+        &self,
+        args: &[Argument],
+        context: &mut ExecutionContext,
+    ) -> Result<(), ExecutionError> {
         if args.len() != 1 {
-            return Err(ExecutionError::InvalidArgumentCount { expected: 1, got: args.len() });
+            return Err(ExecutionError::InvalidArgumentCount {
+                expected: 1,
+                got: args.len(),
+            });
         }
 
         let value = context.read_arg(&args[0])?;
@@ -56,9 +79,15 @@ impl Primitive for WriteOutput {
         Ok(())
     }
 
-    fn arg_count(&self) -> usize { 1 }
-    fn name(&self) -> &str { "WRITE_OUTPUT" }
-    fn description(&self) -> &str { "Write value to output" }
+    fn arg_count(&self) -> usize {
+        1
+    }
+    fn name(&self) -> &str {
+        "WRITE_OUTPUT"
+    }
+    fn description(&self) -> &str {
+        "Write value to output"
+    }
 }
 
 #[cfg(test)]

@@ -1,7 +1,6 @@
 /// Storage module: Persistence for evolution history
 ///
 /// This module handles saving and loading evolution data for later analysis.
-
 use crate::dna::DNA;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
@@ -24,22 +23,18 @@ pub struct GenerationRecord {
 }
 
 impl GenerationRecord {
-    pub fn new(
-        generation: u32,
-        population: Vec<DNA>,
-        templates_created: Vec<u64>,
-    ) -> Self {
+    pub fn new(generation: u32, population: Vec<DNA>, templates_created: Vec<u64>) -> Self {
         let best_fitness = population
             .iter()
             .filter_map(|dna| dna.fitness)
             .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(0.0);
 
-        let fitness_sum: f64 = population
+        let fitness_sum: f64 = population.iter().filter_map(|dna| dna.fitness).sum();
+        let fitness_count = population
             .iter()
-            .filter_map(|dna| dna.fitness)
-            .sum();
-        let fitness_count = population.iter().filter(|dna| dna.fitness.is_some()).count();
+            .filter(|dna| dna.fitness.is_some())
+            .count();
         let average_fitness = if fitness_count > 0 {
             fitness_sum / fitness_count as f64
         } else {
@@ -136,10 +131,7 @@ impl EvolutionHistory {
         }
 
         // Open file in append mode (creates if doesn't exist)
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)?;
+        let file = OpenOptions::new().create(true).append(true).open(path)?;
 
         let mut writer = BufWriter::new(file);
 

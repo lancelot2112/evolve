@@ -7,13 +7,13 @@
 //! deduplication. Each DNA maintains its own template library for lineage-local
 //! template inheritance (mitochondrial-style).
 
-mod template;
-mod hashing;
 mod detection;
+mod hashing;
 mod strategy;
+mod template;
 
 // Re-export core types
-pub use template::{Template, TemplateRegistry};
-pub use hashing::hash_genes;
 pub use detection::detect_templates;
+pub use hashing::hash_genes;
 pub use strategy::TemplateCreationStrategy;
+pub use template::{Template, TemplateRegistry};

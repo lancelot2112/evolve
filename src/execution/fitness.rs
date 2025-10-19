@@ -25,11 +25,7 @@ impl FitnessFunction for ExactMatchFitness {
             return 0.0;
         }
 
-        if result.output == expected {
-            1.0
-        } else {
-            0.0
-        }
+        if result.output == expected { 1.0 } else { 0.0 }
     }
 }
 
