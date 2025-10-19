@@ -7,7 +7,7 @@ use crate::primitives::PrimitiveRegistry;
 use crate::storage::EvolutionHistory;
 
 pub fn cmd_show_dna(id: u64, file: String) {
-    let history = match EvolutionHistory::load_from_file(&file) {
+    let history = match EvolutionHistory::load_from_file_auto(&file) {
         Ok(h) => h,
         Err(e) => {
             eprintln!("Failed to load history from {}: {}", file, e);

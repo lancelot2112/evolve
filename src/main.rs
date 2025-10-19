@@ -41,12 +41,20 @@ enum Commands {
         population: usize,
 
         /// Output file for history
-        #[arg(short, long, default_value = "evolution_history.json")]
+        #[arg(short, long, default_value = "evolution_history.jsonl")]
         output: String,
 
         /// Verbose output
         #[arg(short, long)]
         verbose: bool,
+
+        /// Save to disk every N generations (0 = save only at end)
+        #[arg(long, default_value_t = 0)]
+        save_interval: u32,
+
+        /// Keep only last N generations in memory (0 = keep all)
+        #[arg(long, default_value_t = 0)]
+        keep_in_memory: usize,
     },
 
     /// Inspect a specific generation from history
@@ -112,7 +120,9 @@ fn main() {
             population,
             output,
             verbose,
-        } => cmd_evolve(problem, generations, population, output, verbose),
+            save_interval,
+            keep_in_memory,
+        } => cmd_evolve(problem, generations, population, output, verbose, save_interval, keep_in_memory),
 
         Commands::Inspect { generation, file, top } => cmd_inspect(generation, file, top),
 

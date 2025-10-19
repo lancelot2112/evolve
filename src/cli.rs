@@ -19,6 +19,10 @@ pub struct EvolutionRunner {
     executor: Executor,
     mutator: PointMutator,
     crossover: Crossover,
+    /// Save to disk every N generations (0 = save only at end)
+    pub save_interval: u32,
+    /// Keep only last N generations in memory (0 = keep all)
+    pub keep_in_memory: usize,
 }
 
 impl EvolutionRunner {
@@ -40,6 +44,8 @@ impl EvolutionRunner {
             executor,
             mutator,
             crossover,
+            save_interval: 0,      // Default: save only at end
+            keep_in_memory: 0,     // Default: keep all in memory
         }
     }
 
@@ -170,14 +176,19 @@ impl EvolutionRunner {
 
 
     /// Run evolution for N generations
+    ///
+    /// If save_interval > 0 and output_file is provided, saves incrementally to disk
+    /// and optionally clears old generations from memory based on keep_in_memory setting.
     pub fn run(
         &mut self,
         generations: u32,
         test_cases: &[(Vec<i64>, Vec<i64>)],
         fitness_fn: &dyn FitnessFunction,
         verbose: bool,
+        output_file: Option<&str>,
     ) -> EvolutionHistory {
         let mut history = EvolutionHistory::new();
+        let use_incremental_save = self.save_interval > 0 && output_file.is_some();
 
         // Initialize population
         let mut population = self.initialize_population(0);
@@ -202,7 +213,29 @@ impl EvolutionRunner {
                 );
             }
 
-            history.add_generation(record);
+            // Incremental save logic
+            if use_incremental_save && (generation_num % self.save_interval == 0 || generation_num == generations - 1) {
+                if let Some(path) = output_file {
+                    if let Err(e) = history.append_generation_to_file(record.clone(), path) {
+                        eprintln!("Warning: Failed to save generation {}: {}", generation_num, e);
+                        // Continue execution even if save fails
+                        history.add_generation(record);
+                    } else {
+                        if verbose {
+                            println!("  Saved to disk (generation {})", generation_num);
+                        }
+
+                        // Clear old records from memory if configured
+                        if self.keep_in_memory > 0 {
+                            history.clear_old_records(self.keep_in_memory);
+                        }
+                    }
+                } else {
+                    history.add_generation(record);
+                }
+            } else {
+                history.add_generation(record);
+            }
 
             // Create next generation
             if generation_num < generations - 1 {

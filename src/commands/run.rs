@@ -6,7 +6,15 @@ use crate::cli::{EvolutionRunner, format_dna};
 use crate::execution::{ExactMatchFitness, Executor};
 use crate::primitives::PrimitiveRegistry;
 
-pub fn cmd_evolve(problem: String, generations: u32, population_size: usize, output: String, verbose: bool) {
+pub fn cmd_evolve(
+    problem: String,
+    generations: u32,
+    population_size: usize,
+    output: String,
+    verbose: bool,
+    save_interval: u32,
+    keep_in_memory: usize,
+) {
     println!("Evolve - Evolutionary Algorithm System");
     println!("======================================\n");
 
@@ -32,7 +40,17 @@ pub fn cmd_evolve(problem: String, generations: u32, population_size: usize, out
 
     let mut runner = EvolutionRunner::new();
     runner.population_size = population_size;
-    let history = runner.run(generations, &test_cases, &fitness_fn, verbose);
+    runner.save_interval = save_interval;
+    runner.keep_in_memory = keep_in_memory;
+
+    if save_interval > 0 {
+        println!("Incremental save enabled: saving every {} generations", save_interval);
+        if keep_in_memory > 0 {
+            println!("Memory management: keeping last {} generations in RAM\n", keep_in_memory);
+        }
+    }
+
+    let history = runner.run(generations, &test_cases, &fitness_fn, verbose, Some(&output));
 
     // Print best solution
     if let Some(best_dna) = history.best_dna() {
@@ -63,11 +81,21 @@ pub fn cmd_evolve(problem: String, generations: u32, population_size: usize, out
         }
     }
 
-    // Save history
-    if let Err(e) = history.save_to_file(&output) {
-        eprintln!("\nFailed to save history: {}", e);
+    // Save history (only if incremental save was not used)
+    if save_interval == 0 {
+        // Save as traditional JSON file
+        let json_output = output.replace(".jsonl", ".json");
+        if let Err(e) = history.save_to_file(&json_output) {
+            eprintln!("\nFailed to save history: {}", e);
+        } else {
+            println!("\nEvolution history saved to {}", json_output);
+            println!("Total DNA created: {}", history.records.iter().map(|r| r.population.len()).sum::<usize>());
+        }
     } else {
-        println!("\nEvolution history saved to {}", output);
-        println!("Total DNA created: {}", history.records.iter().map(|r| r.population.len()).sum::<usize>());
+        println!("\nEvolution complete! History saved incrementally to {}", output);
+        println!("Generations in memory: {}", history.records.len());
+        if keep_in_memory > 0 {
+            println!("(Older generations were cleared from memory but are saved to disk)");
+        }
     }
 }
