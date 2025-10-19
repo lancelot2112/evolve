@@ -14,6 +14,4 @@ mod template;
 
 // Re-export core types
 pub use detection::detect_templates;
-pub use hashing::hash_genes;
-pub use strategy::TemplateCreationStrategy;
-pub use template::{Template, TemplateRegistry};
+pub use template::TemplateRegistry;

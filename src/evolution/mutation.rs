@@ -2,7 +2,6 @@
 ///
 /// Point mutations operate on one DNA strand at a time, making small random changes.
 use crate::dna::{Argument, DNA, Gene, OperationId};
-use crate::evolution::EvolutionOperator;
 use crate::template::TemplateRegistry;
 use rand::Rng;
 

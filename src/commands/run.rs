@@ -2,7 +2,7 @@
 //!
 //! Executes the evolution process for a specified problem over multiple generations.
 
-use crate::cli::{EvolutionRunner, format_dna};
+use crate::cli::EvolutionRunner;
 use crate::execution::{ExactMatchFitness, Executor};
 use crate::primitives::PrimitiveRegistry;
 

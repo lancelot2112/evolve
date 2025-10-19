@@ -12,7 +12,5 @@ mod fitness;
 mod result;
 
 // Re-export core types
-pub use config::ExecutionConfig;
 pub use executor::Executor;
-pub use fitness::{ExactMatchFitness, FitnessFunction, MSEFitness, PartialMatchFitness};
-pub use result::ExecutionResult;
+pub use fitness::{ExactMatchFitness, FitnessFunction};

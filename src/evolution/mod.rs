@@ -5,7 +5,7 @@ pub mod crossover;
 /// It is decoupled from the DNA representation and operates on abstract gene sequences.
 pub mod mutation;
 
-pub use crossover::{Crossover, CrossoverMode};
+pub use crossover::Crossover;
 pub use mutation::{MutationConfig, PointMutator};
 
 use crate::dna::DNA;
