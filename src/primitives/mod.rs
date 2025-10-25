@@ -11,6 +11,7 @@ mod context;
 mod data;
 mod io;
 mod markers;
+pub mod neuron;
 mod registry;
 mod stack;
 mod trait_def;
@@ -18,5 +19,6 @@ mod trait_def;
 // Re-export core types and traits
 pub use context::{ExecutionContext, ExecutionError};
 pub use registry::PrimitiveRegistry;
+pub use trait_def::Primitive;
 
 // Re-export all primitive implementations

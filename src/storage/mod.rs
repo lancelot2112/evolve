@@ -230,10 +230,10 @@ mod tests {
 
     #[test]
     fn test_generation_record() {
-        let mut dna1 = DNA::empty(0);
+        let mut dna1 = DNA::empty(0, 0);
         dna1.set_fitness(0.8);
 
-        let mut dna2 = DNA::empty(0);
+        let mut dna2 = DNA::empty(0, 0);
         dna2.set_fitness(0.6);
 
         let record = GenerationRecord::new(0, vec![dna1, dna2], vec![]);

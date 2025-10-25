@@ -96,16 +96,55 @@ pub struct PrimitiveRegistry {
 }
 ```
 
-### Example User-Defined Primitives
-Users can define any primitives relevant to their problem domain:
-- Arithmetic: `ADD`, `SUB`, `MUL`, `DIV`, `MOD`
-- Comparison: `EQ`, `LT`, `GT`, `LE`, `GE`
+### Available Primitive Sets
+
+#### Standard Primitives (Legacy)
+Classic computational primitives for general-purpose evolution:
+- Arithmetic: `ADD`, `SUB`, `MUL`, `DIV`
 - Stack: `PUSH`, `POP`
 - I/O: `READ_INPUT`, `WRITE_OUTPUT`
-- Control: `JUMP`, `JUMP_IF`, `NOP`
-- Data: `LOAD`, `STORE`, `COPY`
+- Data: `COPY`, `NOP`
+- Template markers: `TEMPLATE_START`, `TEMPLATE_END`
 
-Users can extend with domain-specific primitives (e.g., signal processing, string manipulation, etc.)
+#### Neuron Primitives (Recommended)
+Biologically-inspired compartmental neuron operations optimized for speed and memory efficiency.
+See `docs/NEURON_DESIGN.md` for complete documentation.
+
+**Compartment Operations** (5 primitives):
+- `CreateCompartment`: Create neuron compartment with threshold, decay, learning rule
+- `UpdateCompartment`: Apply decay and check firing threshold
+- `GetCompartmentLevel`: Extract net excitatory/inhibitory level
+- `CheckFired`: Test if compartment fired
+- `ResetCompartment`: Clear fired flag and optionally reset levels
+
+**Axon Interface Operations** (4 primitives):
+- `CreateInterface`: Create axon-compartment connection with ion channel counts
+- `SendPacket`: Initiate packet-based signal transmission
+- `IntegratePacket`: Add packet contribution to compartment (weighted by channels)
+- `DecayPacket`: Apply exponential decay to packet value
+
+**Learning Operations** (4 primitives):
+- `ApplyHebbian`: Strengthen connections when pre/post fire together
+- `ApplyAntiHebbian`: Weaken connections for decorrelation
+- `ApplySTDP`: Spike-timing dependent plasticity
+- `ApplyHomeostatic`: Maintain target firing rate
+
+**Batch Processing** (5 primitives):
+- `GetRandomCacheOffset`: Monte Carlo cache-aligned random access
+- `ProcessCompartmentBatch`: Update multiple compartments efficiently
+- `CountFiredNeurons`: Count active neurons in batch
+- `LoadCompartmentFromStack`: Load neuron state from memory
+- `StoreCompartmentToStack`: Save neuron state to memory
+
+**Key Features:**
+- 64-bit packed state representation (8 bytes per neuron)
+- Cache-aware batch processing for large-scale simulations
+- Fast operations using bit shifts instead of division
+- Local learning rules (no backpropagation needed)
+- Packet-based signaling simulating ion transport
+- OS-detected cache line size for optimal performance
+
+Users can extend with domain-specific primitives or use existing sets.
 
 ## Template Module
 

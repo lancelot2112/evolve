@@ -10,6 +10,12 @@ use super::arithmetic::{Add, Div, Mul, Sub};
 use super::data::{Copy, Nop};
 use super::io::{ReadInput, WriteOutput};
 use super::markers::{TemplateEnd, TemplateStart};
+use super::neuron::{
+    ApplyAntiHebbian, ApplyHebbian, ApplyHomeostatic, ApplySTDP, CheckFired, CountFiredNeurons,
+    CreateCompartment, CreateInterface, DecayPacket, GetChannelCounts, GetCompartmentLevel,
+    GetRandomCacheOffset, IntegratePacket, LoadCompartmentFromStack, ProcessCompartmentBatch,
+    ResetCompartment, SendPacket, SetChannelCounts, StoreCompartmentToStack, UpdateCompartment,
+};
 use super::stack::{Pop, Push};
 use super::trait_def::Primitive;
 
@@ -40,7 +46,56 @@ impl PrimitiveRegistry {
         self.primitives.len()
     }
 
-    /// Create a registry with standard primitives
+    /// Create a registry with neuron primitives only
+    pub fn with_neuron_primitives() -> Self {
+        let mut registry = Self::new();
+
+        // Compartment operations (IDs 0-4)
+        registry.register(Box::new(CreateCompartment));
+        registry.register(Box::new(UpdateCompartment));
+        registry.register(Box::new(GetCompartmentLevel));
+        registry.register(Box::new(CheckFired));
+        registry.register(Box::new(ResetCompartment));
+
+        // Axon interface operations (IDs 5-8)
+        registry.register(Box::new(CreateInterface));
+        registry.register(Box::new(SendPacket));
+        registry.register(Box::new(IntegratePacket));
+        registry.register(Box::new(DecayPacket));
+
+        // Learning operations (IDs 9-12)
+        registry.register(Box::new(ApplyHebbian));
+        registry.register(Box::new(ApplyAntiHebbian));
+        registry.register(Box::new(ApplySTDP));
+        registry.register(Box::new(ApplyHomeostatic));
+
+        // Packing utilities (IDs 13-14)
+        registry.register(Box::new(GetChannelCounts));
+        registry.register(Box::new(SetChannelCounts));
+
+        // Batch processing (IDs 15-19)
+        registry.register(Box::new(GetRandomCacheOffset));
+        registry.register(Box::new(ProcessCompartmentBatch));
+        registry.register(Box::new(CountFiredNeurons));
+        registry.register(Box::new(LoadCompartmentFromStack));
+        registry.register(Box::new(StoreCompartmentToStack));
+
+        // Template markers (IDs 20-21)
+        registry.register(Box::new(TemplateStart));
+        registry.register(Box::new(TemplateEnd));
+
+        // Basic I/O for debugging (IDs 22-23)
+        registry.register(Box::new(ReadInput));
+        registry.register(Box::new(WriteOutput));
+
+        // Stack operations for neuron arrays (IDs 24-25)
+        registry.register(Box::new(Push));
+        registry.register(Box::new(Pop));
+
+        registry
+    }
+
+    /// Create a registry with standard primitives (legacy)
     pub fn with_standard_primitives() -> Self {
         let mut registry = Self::new();
 

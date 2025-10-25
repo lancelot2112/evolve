@@ -173,7 +173,7 @@ mod tests {
     fn test_lineage_registry_alive_extinct_lists() {
         let mut registry = LineageRegistry::new();
 
-        let mut lineage1 = Lineage::new(0, 0);
+        let lineage1 = Lineage::new(0, 0);
         let mut lineage2 = Lineage::new(1, 0);
         lineage2.mark_extinct();
 
